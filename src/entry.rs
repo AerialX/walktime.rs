@@ -47,7 +47,9 @@ pub fn exit(status: crate::ExitStatus) -> ! {
                 semihosting::Exception::ApplicationExit => (),
                 #[cfg(not(feature = "fmt"))]
                 _ => semihosting::println!("Exit failure"),
-                #[cfg(feature = "fmt")]
+                #[cfg(feature = "ufmt")]
+                ex => semihosting::uprintln!("Exit failure: {:?}", ex),
+                #[cfg(all(feature = "fmt", not(feature = "ufmt")))]
                 ex => semihosting::println!("Exit failure: {:?}", ex),
             }
             unsafe { semihosting::exit_with(ex) }

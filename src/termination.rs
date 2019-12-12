@@ -60,6 +60,7 @@ impl Termination for bool {
     }
 }
 
+#[cfg(not(feature = "ufmt"))]
 impl<T: Termination, E: core::fmt::Debug> Termination for Result<T, E> {
     #[inline]
     fn report(self) -> ExitStatus {
@@ -72,6 +73,29 @@ impl<T: Termination, E: core::fmt::Debug> Termination for Result<T, E> {
                     _ => semihosting::println!("Main error: {:?}", _e),
                     #[cfg(feature = "cortex-m-semihosting")]
                     _ => drop(cortex_m_semihosting::heprintln!("Main error: {:?}", _e)),
+                    #[cfg(not(any(feature = "cortex-m-semihosting", feature = "semihosting")))]
+                    _ => (),
+                }
+
+                false.report()
+            },
+        }
+    }
+}
+
+#[cfg(feature = "ufmt")]
+impl<T: Termination, E: ufmt_impl::uDebug> Termination for Result<T, E> {
+    #[inline]
+    fn report(self) -> ExitStatus {
+        match self {
+            Ok(t) => t.report(), // TODO this should probably just be ()?
+            Err(_e) => {
+                #[cfg(all(feature = "logging", feature = "fmt"))]
+                match () {
+                    #[cfg(feature = "semihosting")]
+                    _ => semihosting::uprintln!("Main error: {:?}", _e),
+                    #[cfg(feature = "cortex-m-semihosting")]
+                    _ => compile_error!("cortex-m-semihosting + ufmt unsupported"),
                     #[cfg(not(any(feature = "cortex-m-semihosting", feature = "semihosting")))]
                     _ => (),
                 }

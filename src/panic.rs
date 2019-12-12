@@ -1,5 +1,26 @@
 use core::panic::PanicInfo;
 
+#[cfg(feature = "ufmt")]
+struct PanicInfoWriter<'a>(&'a PanicInfo<'a>);
+
+#[cfg(feature = "ufmt")]
+impl ufmt_impl::uDisplay for PanicInfoWriter<'_> {
+    fn fmt<W: ?Sized + ufmt_impl::uWrite>(&self, f: &mut ufmt_impl::Formatter<W>) -> Result<(), W::Error> {
+        f.write_str(if let Some(payload) = self.0.payload().downcast_ref::<&'static str>() {
+            payload
+        } else {
+            "<fmt>"
+        })?;
+
+        if let Some(location) = self.0.location() {
+            use ufmt_impl as ufmt;
+            ufmt::uwrite!(f, ", {}:{}:{}", location.file(), location.line(), location.column())?;
+        }
+
+        Ok(())
+    }
+}
+
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     #[cfg(feature = "cortex-m")]
@@ -9,8 +30,10 @@ fn panic(_info: &PanicInfo) -> ! {
     match () {
         #[cfg(feature = "semihosting")]
         _ => match () {
-            #[cfg(feature = "fmt")]
+            #[cfg(all(feature = "fmt", not(feature = "ufmt")))]
             _ => semihosting::println!("PANIC: {}", _info),
+            #[cfg(feature = "ufmt")]
+            _ => semihosting::uprintln!("PANIC: {}", PanicInfoWriter(_info)),
             #[cfg(not(feature = "fmt"))]
             _ => semihosting::println!("PANIC"),
         },
@@ -55,17 +78,17 @@ fn alloc_error(_layout: core::alloc::Layout) -> ! {
     match () {
         #[cfg(feature = "semihosting")]
         _ => match () {
-            #[cfg(feature = "fmt")]
-            _ => semihosting::println!("OOM: {}", _info),
-            #[cfg(not(feature = "fmt"))]
+            #[cfg(all(feature = "fmt", not(feature = "ufmt")))]
+            _ => semihosting::println!("OOM: {:?}", _layout),
+            #[cfg(any(not(feature = "fmt"), feature = "ufmt"))]
             _ => semihosting::println!("OOM"),
         },
         #[cfg(feature = "cortex-m-semihosting")]
         _ => drop(match () {
             #[cfg(feature = "fmt")]
-            _ => cortex_m_semihosting::heprintln!("PANIC: {}", _info),
+            _ => cortex_m_semihosting::heprintln!("OOM: {:?}", _layout),
             #[cfg(not(feature = "fmt"))]
-            _ => cortex_m_semihosting::heprintln!("PANIC"),
+            _ => cortex_m_semihosting::heprintln!("OOM"),
         }),
         #[cfg(not(any(feature = "semihosting", feature = "cortex-m-semihosting")))]
         _ => (),
