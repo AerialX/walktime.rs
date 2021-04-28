@@ -7,10 +7,10 @@ categories = ["no-std", "embedded"]
 
 [dependencies]
 cortex-m-semihosting = { version = "^0.3.5", optional = true }
-cortex-m = { version = "^0.6.1", optional = true }
+cortex-m = { version = "^0.7.2", optional = true }
 semihosting = { version = "^0.1.0", optional = true, git = "https://github.com/AerialX/semihosting.rs" }
 reachability = { version = "^0.1.0", optional = true, git = "https://github.com/AerialX/reachability.rs" }
-linkme = { version = "^0.1.6", optional = true }
+linkme = { version = "^0.2.5", optional = true }
 ufmt_impl = { package = "ufmt", version = "^0.1.0", optional = true }
 
 [features]
